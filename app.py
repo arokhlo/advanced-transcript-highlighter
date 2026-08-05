@@ -36,7 +36,7 @@ COMPUTE_TYPE = os.getenv(
 ).strip()
 CPU_THREADS = max(1, int(os.getenv("WHISPER_CPU_THREADS", "1")))
 WORKERS = max(1, int(os.getenv("WHISPER_WORKERS", "1")))
-TRANSLATION_BATCH_LIMIT = max(1, int(os.getenv("TRANSLATION_BATCH_LIMIT", "100")))
+TRANSLATION_BATCH_LIMIT = max(1, int(os.getenv("TRANSLATION_BATCH_LIMIT", "20")))
 
 ALLOWED_EXTENSIONS = {
     ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac",
@@ -63,11 +63,7 @@ def get_whisper_model() -> WhisperModel:
         if _whisper_model is None:
             logger.info(
                 "Loading Whisper model=%s device=%s compute_type=%s threads=%s workers=%s",
-                MODEL_SIZE,
-                DEVICE,
-                COMPUTE_TYPE,
-                CPU_THREADS,
-                WORKERS,
+                MODEL_SIZE, DEVICE, COMPUTE_TYPE, CPU_THREADS, WORKERS,
             )
             _whisper_model = WhisperModel(
                 MODEL_SIZE,
@@ -77,7 +73,6 @@ def get_whisper_model() -> WhisperModel:
                 num_workers=WORKERS,
             )
             logger.info("Whisper model loaded successfully.")
-
     return _whisper_model
 
 
@@ -145,6 +140,7 @@ def transcribe():
     safe_name = secure_filename(media.filename)
     if not safe_name:
         return json_error("The uploaded filename is invalid.", 400)
+
     if not allowed_file(safe_name):
         return json_error(
             "Unsupported file type. Please upload a common audio or video file.",
@@ -200,10 +196,7 @@ def transcribe():
                             "text": text,
                             "start": round(float(word.start), 3),
                             "end": round(float(word.end), 3),
-                            "probability": round(
-                                float(getattr(word, "probability", 0.0) or 0.0),
-                                4,
-                            ),
+                            "probability": round(float(getattr(word, "probability", 0.0) or 0.0), 4),
                         }
                     )
 
@@ -219,10 +212,7 @@ def transcribe():
 
         return jsonify(
             language=info.language,
-            language_probability=round(
-                float(getattr(info, "language_probability", 0.0) or 0.0),
-                4,
-            ),
+            language_probability=round(float(getattr(info, "language_probability", 0.0) or 0.0), 4),
             duration=round(duration, 3),
             model=MODEL_SIZE,
             device=DEVICE,
@@ -231,10 +221,7 @@ def transcribe():
 
     except MemoryError:
         logger.exception("Transcription failed because the server ran out of memory.")
-        return json_error(
-            "The server ran out of memory. Try a shorter or smaller file.",
-            507,
-        )
+        return json_error("The server ran out of memory. Try a shorter or smaller file.", 507)
     except Exception as exc:
         logger.exception("Transcription failed.")
         return json_error(f"Transcription failed: {exc}", 500)
@@ -265,11 +252,13 @@ def translate():
 
     if not isinstance(texts, list) or not texts:
         return json_error("No text was supplied for translation.", 400)
+
     if len(texts) > TRANSLATION_BATCH_LIMIT:
         return json_error(
             f"Send no more than {TRANSLATION_BATCH_LIMIT} segments in one batch.",
             400,
         )
+
     if GoogleTranslator is None:
         return json_error(
             "Translation support is not installed. Run: python -m pip install deep-translator",
@@ -279,7 +268,10 @@ def translate():
     cleaned = [str(item or "").strip() for item in texts]
 
     try:
-        translations = [translate_cached(text, target) if text else "" for text in cleaned]
+        translations = [
+            translate_cached(text, target) if text else ""
+            for text in cleaned
+        ]
         return jsonify(translations=translations, target=target)
     except Exception as exc:
         logger.exception("Translation failed.")
