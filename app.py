@@ -36,7 +36,7 @@ COMPUTE_TYPE = os.getenv(
 ).strip()
 CPU_THREADS = max(1, int(os.getenv("WHISPER_CPU_THREADS", "1")))
 WORKERS = max(1, int(os.getenv("WHISPER_WORKERS", "1")))
-TRANSLATION_BATCH_LIMIT = max(1, int(os.getenv("TRANSLATION_BATCH_LIMIT", "20")))
+TRANSLATION_BATCH_LIMIT = max(1, int(os.getenv("TRANSLATION_BATCH_LIMIT", "100")))
 
 ALLOWED_EXTENSIONS = {
     ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac",
