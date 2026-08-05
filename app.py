@@ -25,7 +25,7 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 app = Flask(__name__)
 
-MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "20"))
+MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "100"))
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
 MODEL_SIZE = os.getenv("WHISPER_MODEL", "tiny.en").strip() or "tiny.en"
