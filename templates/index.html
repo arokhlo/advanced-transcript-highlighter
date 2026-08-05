@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <title>TellMe Podcast | WordSync Studio</title>
+  <style>
+    :root {
+      --bg:#050b14; --panel:#0b1728; --panel2:#0e1d31; --text:#f4f7ff;
+      --muted:#91a1b7; --line:rgba(255,255,255,.10); --violet:#8b66ff;
+      --violet2:#6546dc; --cyan:#39d9ff; --green:#48e39d; --danger:#ff7f95;
+      --shadow:0 24px 70px rgba(0,0,0,.38);
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body {
+      margin:0; min-height:100vh; color:var(--text);
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:radial-gradient(circle at 15% 0%,rgba(65,151,255,.11),transparent 30%),
+                 linear-gradient(145deg,#030811,#081424 58%,#07111f);
+    }
+    button,input { font:inherit; }
+    button { color:inherit; }
+    .app { width:min(1500px,calc(100% - 28px)); margin:auto; padding:16px 0 30px; }
+    .topbar {
+      min-height:64px; display:flex; align-items:center; justify-content:space-between;
+      gap:18px; padding:0 4px 14px; border-bottom:1px solid var(--line);
+    }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .brand-mark { color:var(--violet); font-size:1.55rem; }
+    .brand h1 { margin:0; font-size:1.2rem; }
+    .top-meta { display:flex; flex-wrap:wrap; gap:9px; }
+    .pill {
+      padding:8px 11px; border:1px solid var(--line); border-radius:12px;
+      background:rgba(255,255,255,.025); color:var(--muted); font-size:.8rem;
+    }
+    .pill b { color:var(--text); }
+    .layout {
+      display:grid; grid-template-columns:minmax(0,1.7fr) minmax(340px,.8fr);
+      gap:18px; margin-top:18px;
+    }
+    .card {
+      background:linear-gradient(180deg,rgba(14,29,49,.94),rgba(9,20,35,.96));
+      border:1px solid var(--line); border-radius:20px; box-shadow:var(--shadow);
+    }
+    .main { padding:18px; }
+    .dropzone {
+      position:relative; min-height:145px; display:grid; place-items:center;
+      text-align:center; border:1px dashed rgba(57,217,255,.38); border-radius:17px;
+      background:rgba(42,116,175,.05); transition:.2s;
+    }
+    .dropzone.drag { border-color:var(--cyan); background:rgba(57,217,255,.08); }
+    .dropzone input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+    .upload-icon {
+      width:56px; height:56px; margin:0 auto 10px; display:grid; place-items:center;
+      border-radius:18px; background:rgba(57,217,255,.11);
+      border:1px solid rgba(57,217,255,.18); font-size:1.5rem;
+    }
+    .dropzone h2 { margin:0 0 5px; font-size:1.05rem; }
+    .dropzone p { margin:0; color:var(--muted); font-size:.82rem; line-height:1.55; }
+    .filebar {
+      display:none; align-items:center; gap:12px; margin-top:14px; padding:12px 14px;
+      border-radius:15px; background:rgba(255,255,255,.035); border:1px solid var(--line);
+    }
+    .filebar.show { display:flex; }
+    .fileicon {
+      width:42px; height:42px; display:grid; place-items:center; border-radius:12px;
+      background:rgba(139,102,255,.16);
+    }
+    .filemeta { flex:1; min-width:0; }
+    .filemeta strong,.filemeta span {
+      display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .filemeta span { margin-top:3px; color:var(--muted); font-size:.78rem; }
+    .actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:14px; }
+    .btn {
+      border:0; border-radius:12px; padding:10px 15px; color:#fff; font-weight:750;
+      cursor:pointer; transition:.18s;
+    }
+    .btn:hover { transform:translateY(-1px); }
+    .btn:disabled { opacity:.42; cursor:not-allowed; transform:none; }
+    .primary { background:linear-gradient(135deg,#138fb7,var(--violet2)); }
+    .secondary { background:rgba(255,255,255,.055); border:1px solid var(--line); }
+    .danger { background:rgba(255,127,149,.09); border:1px solid rgba(255,127,149,.22); color:#ffb7c3; }
+    .translate-on { background:linear-gradient(135deg,#257c5e,#3455b8); }
+    .progress-wrap { display:none; margin-top:14px; }
+    .progress-wrap.show { display:block; }
+    .progress-head { display:flex; justify-content:space-between; margin-bottom:7px; color:var(--muted); font-size:.76rem; }
+    .progress { height:8px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.05); }
+    .bar { height:100%; width:0; background:linear-gradient(90deg,var(--cyan),var(--violet)); transition:width .2s; }
+    .bar.indeterminate { width:34%; animation:slide 1.05s infinite ease-in-out; }
+    @keyframes slide { from{transform:translateX(-110%)} to{transform:translateX(310%)} }
+
+    .player-card { margin-top:18px; padding:14px; }
+    .media-stage {
+      position:relative; min-height:390px; display:grid; place-items:center; overflow:hidden;
+      border-radius:17px; background:#02060c;
+    }
+    .media-stage video { width:100%; max-height:640px; display:block; background:#000; }
+    .media-stage audio { width:94%; }
+    .empty { color:#62768e; font-size:.86rem; }
+    .caption-shell {
+      position:absolute; left:50%; bottom:7%; transform:translateX(-50%);
+      width:min(94%,1100px); pointer-events:none; opacity:0; transition:opacity .16s;
+      z-index:10; text-align:center;
+    }
+    .caption-shell.show { opacity:1; }
+    .caption-card {
+      display:inline-flex; flex-direction:column; align-items:stretch; gap:7px;
+      max-width:100%; padding:14px 22px; border-radius:16px;
+      background:linear-gradient(180deg,rgba(0,0,0,.28),rgba(0,0,0,.80));
+      backdrop-filter:blur(9px); box-shadow:0 12px 38px rgba(0,0,0,.35);
+    }
+    .english-line {
+      display:block; color:#fff; font-size:clamp(1.18rem,2.45vw,2.35rem);
+      font-weight:800; line-height:1.38; text-align:center; direction:ltr;
+      text-shadow:0 3px 11px #000;
+    }
+    .english-line .spoken { color:#c9c4dd; }
+    .english-line .current {
+      color:#fff; background:linear-gradient(135deg,#7e5cff,#a069ff);
+      border-radius:.28em; padding:.02em .18em; box-decoration-break:clone;
+      -webkit-box-decoration-break:clone;
+    }
+    .persian-line {
+      display:block; margin-top:2px; padding-top:7px;
+      border-top:1px solid rgba(255,255,255,.14); color:#ffe27a;
+      font-family:Tahoma,"Segoe UI",Arial,sans-serif;
+      font-size:clamp(1rem,1.85vw,1.75rem); font-weight:750; line-height:1.55;
+      direction:rtl; text-align:right; unicode-bidi:plaintext;
+      text-shadow:0 3px 10px #000;
+    }
+    .player-controls {
+      display:flex; align-items:center; justify-content:space-between; gap:14px;
+      flex-wrap:wrap; padding:14px 5px 2px;
+    }
+    .time-info { color:var(--muted); font-size:.8rem; }
+    .speed-control {
+      display:flex; align-items:center; gap:10px; min-width:min(100%,340px); flex:1;
+    }
+    .speed-control label { color:var(--muted); font-size:.8rem; white-space:nowrap; }
+    .speed-control input { width:100%; accent-color:var(--violet); }
+    .speed-value { min-width:50px; text-align:right; font-weight:750; }
+    .caption-options {
+      display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.8rem;
+    }
+
+    .sidebar { min-height:650px; display:flex; flex-direction:column; overflow:hidden; }
+    .side-head { padding:18px 18px 12px; border-bottom:1px solid var(--line); }
+    .side-title { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .side-title h2 { margin:0; font-size:1rem; }
+    .live { color:var(--green); font-size:.76rem; }
+    .search {
+      width:100%; margin-top:13px; padding:10px 12px; color:var(--text);
+      background:rgba(255,255,255,.025); border:1px solid var(--line); border-radius:11px;
+      outline:none;
+    }
+    .transcript {
+      flex:1; min-height:0; max-height:650px; overflow:auto; padding:18px;
+      line-height:2.05; scroll-behavior:smooth;
+    }
+    .placeholder { color:var(--muted); line-height:1.65; }
+    .word {
+      display:inline; padding:3px 4px; border-radius:6px; cursor:pointer; transition:.12s;
+    }
+    .word:hover { background:rgba(255,255,255,.07); }
+    .word.active { background:rgba(139,102,255,.34); color:#fff; }
+    .word.match { outline:1px solid var(--cyan); }
+    .sentence-break { display:block; height:8px; }
+    .side-foot {
+      display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      padding:12px 18px; border-top:1px solid var(--line); color:var(--muted); font-size:.78rem;
+    }
+    .export-row { display:flex; gap:7px; }
+    .mini-btn {
+      border:1px solid var(--line); border-radius:9px; padding:7px 9px;
+      background:rgba(255,255,255,.04); cursor:pointer;
+    }
+    .mini-btn:disabled { opacity:.35; cursor:not-allowed; }
+    .statusbar {
+      display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+      margin-top:18px; padding:12px 16px; border:1px solid var(--line);
+      border-radius:16px; background:rgba(9,20,35,.83); color:var(--muted); font-size:.79rem;
+    }
+    .status-dot { display:inline-block; width:8px; height:8px; margin-right:7px; border-radius:50%; background:var(--green); }
+    .toast {
+      position:fixed; right:18px; bottom:18px; max-width:min(420px,calc(100% - 36px));
+      padding:12px 15px; border:1px solid var(--line); border-radius:12px;
+      background:#102139; box-shadow:var(--shadow); transform:translateY(25px);
+      opacity:0; pointer-events:none; transition:.2s; z-index:100;
+    }
+    .toast.show { transform:translateY(0); opacity:1; }
+    @media (max-width:980px) {
+      .layout { grid-template-columns:1fr; }
+      .sidebar { min-height:480px; }
+      .transcript { max-height:440px; }
+      .media-stage { min-height:300px; }
+    }
+    @media (max-width:620px) {
+      .app { width:min(100% - 16px,1500px); }
+      .topbar { align-items:flex-start; }
+      .top-meta { display:none; }
+      .main { padding:12px; }
+      .caption-card { padding:10px 13px; border-radius:12px; }
+      .caption-shell { bottom:10%; width:96%; }
+      .player-controls { align-items:flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">▥</span><h1>TellMe Podcast</h1></div>
+      <div class="top-meta">
+        <span class="pill">Model: <b>{{ model_name }}</b></span>
+        <span class="pill">Device: <b>{{ device_name }}</b></span>
+        <span class="pill">Threads: <b>{{ cpu_threads }}</b></span>
+      </div>
+    </header>
+
+    <section class="layout">
+      <div>
+        <section class="card main">
+          <label class="dropzone" id="dropzone">
+            <input id="fileInput" type="file" accept="audio/*,video/*">
+            <div>
+              <div class="upload-icon">↑</div>
+              <h2>Drop your media file here</h2>
+              <p>or click to choose MP3, WAV, M4A, MP4, MOV, MKV or WebM<br>Recommended maximum: 500 MB</p>
+            </div>
+          </label>
+
+          <div class="filebar" id="filebar">
+            <div class="fileicon">▶</div>
+            <div class="filemeta"><strong id="fileName"></strong><span id="fileDetails"></span></div>
+            <button class="btn danger" id="removeBtn" type="button">Remove</button>
+          </div>
+
+          <div class="actions">
+            <button class="btn primary" id="transcribeBtn" disabled type="button">✦ Transcribe & Align</button>
+            <button class="btn secondary" id="translateBtn" disabled type="button">ترجمه هم‌زمان فارسی</button>
+            <button class="btn secondary" id="demoBtn" type="button">Load Demo Transcript</button>
+          </div>
+
+          <div class="progress-wrap" id="progressWrap">
+            <div class="progress-head"><span id="progressLabel">Uploading media…</span><span id="progressValue">0%</span></div>
+            <div class="progress"><div class="bar" id="progressBar"></div></div>
+          </div>
+        </section>
+
+        <section class="card player-card">
+          <div class="media-stage" id="mediaStage">
+            <div class="empty">Your media player will appear here.</div>
+            <div class="caption-shell" id="captionShell">
+              <div class="caption-card">
+                <div class="english-line" id="englishCaption"></div>
+                <div class="persian-line" id="persianCaption" lang="fa" dir="rtl" hidden></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="player-controls">
+            <div class="time-info"><span id="currentTime">00:00</span> / <span id="duration">00:00</span></div>
+            <div class="speed-control">
+              <label for="speedSlider">Playback speed</label>
+              <input id="speedSlider" type="range" min="0.5" max="2" step="0.05" value="1">
+              <span class="speed-value" id="speedValue">1.00×</span>
+            </div>
+            <label class="caption-options">
+              <input id="followPanel" type="checkbox"> Follow transcript panel
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <aside class="card sidebar">
+        <div class="side-head">
+          <div class="side-title"><h2>Transcript</h2><span class="live">● Live</span></div>
+          <input class="search" id="searchInput" type="search" placeholder="Search transcript…">
+        </div>
+        <div class="transcript" id="transcript">
+          <div class="placeholder">Upload a file and create a transcript. The current spoken word will be highlighted primarily over the video.</div>
+        </div>
+        <div class="side-foot">
+          <span><span id="wordCount">0</span> words · <span id="language">EN</span> · <span id="readTime">0 min</span></span>
+          <div class="export-row">
+            <button class="mini-btn" id="txtBtn" disabled>TXT</button>
+            <button class="mini-btn" id="srtBtn" disabled>SRT</button>
+            <button class="mini-btn" id="jsonBtn" disabled>JSON</button>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <footer class="statusbar">
+      <span><span class="status-dot"></span><span id="statusText">Ready</span></span>
+      <span>Video captions are prioritised · English above · Persian RTL below</span>
+    </footer>
+  </main>
+  <div class="toast" id="toast"></div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const els = {
+    fileInput:$('fileInput'), dropzone:$('dropzone'), filebar:$('filebar'), fileName:$('fileName'),
+    fileDetails:$('fileDetails'), removeBtn:$('removeBtn'), transcribeBtn:$('transcribeBtn'),
+    translateBtn:$('translateBtn'), demoBtn:$('demoBtn'), progressWrap:$('progressWrap'),
+    progressLabel:$('progressLabel'), progressValue:$('progressValue'), progressBar:$('progressBar'),
+    mediaStage:$('mediaStage'), captionShell:$('captionShell'), englishCaption:$('englishCaption'),
+    persianCaption:$('persianCaption'), speedSlider:$('speedSlider'), speedValue:$('speedValue'),
+    followPanel:$('followPanel'), currentTime:$('currentTime'), duration:$('duration'),
+    transcript:$('transcript'), searchInput:$('searchInput'), wordCount:$('wordCount'),
+    language:$('language'), readTime:$('readTime'), txtBtn:$('txtBtn'), srtBtn:$('srtBtn'),
+    jsonBtn:$('jsonBtn'), statusText:$('statusText'), toast:$('toast')
+  };
+
+  const state = {
+    file:null, url:null, media:null, isVideo:false, words:[], groups:[], translations:[],
+    translationEnabled:false, active:-1, raf:null, meta:{language:'en'}
+  };
+
+  const escapeHTML = value => String(value).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const fmtSize = n => n < 1024*1024 ? `${(n/1024).toFixed(1)} KB` : `${(n/1024/1024).toFixed(1)} MB`;
+  const fmtTime = sec => {
+    if (!Number.isFinite(sec)) return '00:00';
+    const s=Math.max(0,Math.floor(sec)), h=Math.floor(s/3600), m=Math.floor((s%3600)/60), r=s%60;
+    return h ? `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}` : `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
+  };
+  function toast(message){ els.toast.textContent=message; els.toast.classList.add('show'); clearTimeout(toast.timer); toast.timer=setTimeout(()=>els.toast.classList.remove('show'),3500); }
+  function setStatus(message){ els.statusText.textContent=message; }
+  function setProgress(value,label){ els.progressWrap.classList.add('show'); els.progressBar.classList.remove('indeterminate'); els.progressBar.style.width=`${value}%`; els.progressValue.textContent=`${Math.round(value)}%`; els.progressLabel.textContent=label; }
+  function setProcessing(){ els.progressWrap.classList.add('show'); els.progressBar.style.width='34%'; els.progressBar.classList.add('indeterminate'); els.progressValue.textContent='Processing'; els.progressLabel.textContent='Transcribing and aligning words…'; }
+  function hideProgress(){ setTimeout(()=>{els.progressWrap.classList.remove('show');els.progressBar.classList.remove('indeterminate');els.progressBar.style.width='0'},550); }
+
+  function resetCaptions(){
+    els.captionShell.classList.remove('show');
+    els.englishCaption.innerHTML='';
+    els.persianCaption.textContent='';
+    els.persianCaption.hidden=true;
+  }
+
+  function selectFile(file){
+    clearFile(false);
+    state.file=file; state.url=URL.createObjectURL(file);
+    els.fileName.textContent=file.name; els.fileDetails.textContent=`${fmtSize(file.size)} · ${file.type||'media'}`;
+    els.filebar.classList.add('show'); els.transcribeBtn.disabled=false;
+    state.isVideo=file.type.startsWith('video') || /\.(mp4|mov|mkv|webm)$/i.test(file.name);
+    els.followPanel.checked=!state.isVideo;
+    state.media=document.createElement(state.isVideo?'video':'audio');
+    state.media.src=state.url; state.media.controls=true; state.media.preload='metadata';
+    els.mediaStage.innerHTML=''; els.mediaStage.appendChild(state.media); els.mediaStage.appendChild(els.captionShell);
+    state.media.addEventListener('loadedmetadata',()=>els.duration.textContent=fmtTime(state.media.duration));
+    state.media.addEventListener('play',startSync); state.media.addEventListener('pause',stopSync); state.media.addEventListener('ended',stopSync);
+    state.media.playbackRate=Number(els.speedSlider.value);
+    setStatus('File ready');
+  }
+
+  function clearFile(reset=true){
+    stopSync(); if(state.url) URL.revokeObjectURL(state.url);
+    Object.assign(state,{file:null,url:null,media:null,isVideo:false,active:-1,words:[],groups:[],translations:[],translationEnabled:false,meta:{language:'en'}});
+    els.fileInput.value=''; els.filebar.classList.remove('show'); els.transcribeBtn.disabled=true;
+    els.translateBtn.disabled=true; els.translateBtn.classList.remove('translate-on'); els.translateBtn.textContent='ترجمه هم‌زمان فارسی';
+    els.mediaStage.innerHTML='<div class="empty">Your media player will appear here.</div>'; els.mediaStage.appendChild(els.captionShell);
+    resetCaptions(); els.currentTime.textContent='00:00'; els.duration.textContent='00:00';
+    if(reset) renderWords([]); setStatus('Ready');
+  }
+
+  function buildSentenceGroups(){
+    const groups=[]; let start=0, parts=[];
+    state.words.forEach((w,i)=>{
+      parts.push(w.text);
+      const close=/[.!?]$/.test(w.text) || parts.length>=22 || i===state.words.length-1;
+      if(close){
+        groups.push({startIndex:start,endIndex:i,text:parts.join(' ').replace(/\s+([,.!?;:])/g,'$1')});
+        start=i+1; parts=[];
+      }
+    });
+    state.groups=groups;
+  }
+
+  function renderWords(words){
+    state.words=(words||[]).map((w,i)=>({text:String(w.text||'').trim(),start:Number(w.start)||0,end:Number(w.end)||Number(w.start)||0,index:i})).filter(w=>w.text);
+    state.active=-1; buildSentenceGroups();
+    if(!state.words.length){
+      els.transcript.innerHTML='<div class="placeholder">Upload a file and create a transcript. The current spoken word will be highlighted primarily over the video.</div>';
+      resetCaptions();
+    } else {
+      els.transcript.innerHTML=state.words.map((w,i)=>`<span class="word" data-i="${i}" title="${fmtTime(w.start)}">${escapeHTML(w.text)}</span> ${/[.!?]$/.test(w.text)?'<span class="sentence-break"></span>':''}`).join('');
+      els.transcript.querySelectorAll('.word').forEach(node=>node.onclick=()=>{
+        if(!state.media) return toast('Load the matching media file first.');
+        state.media.currentTime=state.words[Number(node.dataset.i)].start;
+        state.media.play().catch(()=>{});
+      });
+    }
+    els.wordCount.textContent=state.words.length.toLocaleString();
+    els.language.textContent=(state.meta.language||'en').toUpperCase();
+    els.readTime.textContent=`${Math.ceil(state.words.length/220)||0} min`;
+    [els.txtBtn,els.srtBtn,els.jsonBtn].forEach(b=>b.disabled=!state.words.length);
+    els.translateBtn.disabled=!state.words.length;
+  }
+
+  function findWord(t){
+    let lo=0,hi=state.words.length-1,best=-1;
+    while(lo<=hi){const mid=(lo+hi)>>1;if(t<state.words[mid].start)hi=mid-1;else{best=mid;lo=mid+1}}
+    return best>=0 && t<=state.words[best].end+.14 ? best : -1;
+  }
+  function groupForIndex(i){ return state.groups.find(g=>i>=g.startIndex&&i<=g.endIndex) || null; }
+  function translationForIndex(i){ const group=groupForIndex(i); if(!group) return ''; const idx=state.groups.indexOf(group); return state.translations[idx]||''; }
+
+  function renderVideoCaption(i){
+    if(i<0){ resetCaptions(); return; }
+    const group=groupForIndex(i);
+    if(!group){ resetCaptions(); return; }
+    els.englishCaption.innerHTML=state.words.slice(group.startIndex,group.endIndex+1).map((w,k)=>{
+      const idx=group.startIndex+k;
+      const cls=idx===i?'current':idx<i?'spoken':'';
+      return `<span class="${cls}">${escapeHTML(w.text)}</span>`;
+    }).join(' ');
+    const fa=state.translationEnabled ? translationForIndex(i) : '';
+    els.persianCaption.textContent=fa;
+    els.persianCaption.hidden=!fa;
+    els.captionShell.classList.add('show');
+  }
+
+  function setActive(i){
+    if(i===state.active) return;
+    els.transcript.querySelector('.word.active')?.classList.remove('active');
+    state.active=i;
+    if(i<0){ resetCaptions(); return; }
+    const node=els.transcript.querySelector(`.word[data-i="${i}"]`);
+    if(node){
+      node.classList.add('active');
+      if(!state.isVideo || els.followPanel.checked) node.scrollIntoView({block:'center',behavior:'smooth'});
+    }
+    renderVideoCaption(i);
+  }
+
+  function sync(){
+    if(state.media){ els.currentTime.textContent=fmtTime(state.media.currentTime); setActive(findWord(state.media.currentTime)); }
+    state.raf=requestAnimationFrame(sync);
+  }
+  function startSync(){ stopSync(); sync(); }
+  function stopSync(){
+    if(state.raf) cancelAnimationFrame(state.raf); state.raf=null;
+    if(state.media){ els.currentTime.textContent=fmtTime(state.media.currentTime); setActive(findWord(state.media.currentTime)); }
+  }
+
+  function upload(){
+    return new Promise((resolve,reject)=>{
+      const xhr=new XMLHttpRequest(), fd=new FormData(); fd.append('media',state.file);
+      xhr.open('POST','/api/transcribe'); xhr.responseType='json';
+      xhr.upload.onprogress=e=>{if(e.lengthComputable)setProgress((e.loaded/e.total)*100,'Uploading media…')};
+      xhr.upload.onload=()=>setProcessing();
+      xhr.onload=()=>xhr.status>=200&&xhr.status<300?resolve(xhr.response):reject(new Error(xhr.response?.error||`Server error ${xhr.status}`));
+      xhr.onerror=()=>reject(new Error('Could not reach the transcription server.')); xhr.send(fd);
+    });
+  }
+
+  async function transcribe(){
+    if(!state.file) return;
+    els.transcribeBtn.disabled=true; setStatus('Processing');
+    try{
+      const data=await upload(); state.meta={language:data.language||'en'}; renderWords(data.words||[]);
+      setProgress(100,'Transcript complete'); setStatus('Transcript ready'); toast(`Created ${state.words.length.toLocaleString()} timed words.`);
+    }catch(error){console.error(error);setStatus('Failed');toast(error.message)}
+    finally{els.transcribeBtn.disabled=false;hideProgress()}
+  }
+
+  async function fetchTranslationBatch(texts, timeoutMs=45000){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),timeoutMs);
+    try{
+      const response=await fetch('/api/translate',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        signal:controller.signal,
+        body:JSON.stringify({texts,target:'fa'})
+      });
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok) throw new Error(data.error||`Translation server error ${response.status}`);
+      if(!Array.isArray(data.translations)||data.translations.length!==texts.length){
+        throw new Error('The translation service returned incomplete results.');
+      }
+      return data.translations;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function preparePersianTranslations(){
+    const batchSize=12;
+    const total=state.groups.length;
+    const output=new Array(total).fill('');
+
+    for(let start=0;start<total;start+=batchSize){
+      const end=Math.min(start+batchSize,total);
+      const texts=state.groups.slice(start,end).map(group=>group.text);
+      const translated=await fetchTranslationBatch(texts);
+      translated.forEach((text,index)=>output[start+index]=text);
+
+      const percent=Math.round((end/total)*100);
+      els.translateBtn.textContent=`در حال ترجمه… ${percent}٪`;
+      setStatus(`Translating to Persian ${percent}%`);
+
+      // Reveal completed translations immediately while the remaining batches continue.
+      state.translations=output.slice();
+      renderVideoCaption(findWord(state.media?.currentTime||0));
+    }
+    return output;
+  }
+
+  async function toggleTranslation(){
+    if(!state.words.length) return;
+
+    if(state.translationEnabled){
+      state.translationEnabled=false;
+      els.translateBtn.classList.remove('translate-on');
+      els.translateBtn.textContent='ترجمه هم‌زمان فارسی';
+      renderVideoCaption(findWord(state.media?.currentTime||0));
+      setStatus('English captions');
+      return;
+    }
+
+    if(state.translations.length!==state.groups.length || state.translations.some((text,index)=>!text&&state.groups[index]?.text)){
+      els.translateBtn.disabled=true;
+      els.translateBtn.textContent='در حال ترجمه… ۰٪';
+      setStatus('Translating to Persian 0%');
+      state.translationEnabled=true;
+      els.translateBtn.classList.add('translate-on');
+
+      try{
+        state.translations=await preparePersianTranslations();
+        toast('Persian translation is ready.');
+      }catch(error){
+        console.error(error);
+        const message=error.name==='AbortError'
+          ? 'Translation timed out. Check your internet connection and try again.'
+          : error.message;
+        toast(message);
+        setStatus('Translation failed');
+        state.translationEnabled=false;
+        els.translateBtn.classList.remove('translate-on');
+        els.translateBtn.textContent='ترجمه هم‌زمان فارسی';
+        renderVideoCaption(findWord(state.media?.currentTime||0));
+        els.translateBtn.disabled=false;
+        return;
+      }finally{
+        els.translateBtn.disabled=false;
+      }
+    }
+
+    state.translationEnabled=true;
+    els.translateBtn.classList.add('translate-on');
+    els.translateBtn.textContent='خاموش کردن ترجمه فارسی';
+    setStatus('Bilingual captions');
+    renderVideoCaption(findWord(state.media?.currentTime||0));
+  }
+
+  const demo=(()=>{let t=.2;return 'Welcome to TellMe Podcast, where we explore ideas, share stories, and discuss topics that matter.'.split(' ').map(text=>{const start=t,end=t+.33;t=end+.06;return{text,start,end}})})();
+  function plainText(){return state.words.map(w=>w.text).join(' ').replace(/\s+([,.!?;:])/g,'$1')}
+  function save(name,type,content){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+  function srtTime(s){const ms=Math.round(s*1000),h=Math.floor(ms/3600000),m=Math.floor(ms%3600000/60000),sec=Math.floor(ms%60000/1000);return`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')},${String(ms%1000).padStart(3,'0')}`}
+  function makeSrt(){return state.groups.map((g,i)=>`${i+1}\n${srtTime(state.words[g.startIndex].start)} --> ${srtTime(state.words[g.endIndex].end)}\n${g.text}${state.translationEnabled&&state.translations[i]?`\n${state.translations[i]}`:''}\n`).join('\n')}
+
+  els.fileInput.onchange=e=>e.target.files[0]&&selectFile(e.target.files[0]);
+  ['dragenter','dragover'].forEach(ev=>els.dropzone.addEventListener(ev,e=>{e.preventDefault();els.dropzone.classList.add('drag')}));
+  ['dragleave','drop'].forEach(ev=>els.dropzone.addEventListener(ev,e=>{e.preventDefault();els.dropzone.classList.remove('drag')}));
+  els.dropzone.addEventListener('drop',e=>e.dataTransfer.files[0]&&selectFile(e.dataTransfer.files[0]));
+  els.removeBtn.onclick=()=>clearFile(); els.transcribeBtn.onclick=transcribe; els.translateBtn.onclick=toggleTranslation;
+  els.demoBtn.onclick=()=>{state.meta={language:'en'};renderWords(demo);setStatus('Demo ready')};
+  els.speedSlider.oninput=()=>{const rate=Number(els.speedSlider.value);els.speedValue.textContent=`${rate.toFixed(2)}×`;if(state.media)state.media.playbackRate=rate};
+  els.searchInput.oninput=()=>{const q=els.searchInput.value.trim().toLowerCase();els.transcript.querySelectorAll('.word').forEach(n=>n.classList.toggle('match',!!q&&n.textContent.toLowerCase().includes(q)))};
+  els.txtBtn.onclick=()=>save('transcript.txt','text/plain',plainText());
+  els.srtBtn.onclick=()=>save('transcript.srt','application/x-subrip',makeSrt());
+  els.jsonBtn.onclick=()=>save('transcript.json','application/json',JSON.stringify({language:state.meta.language,words:state.words,translations:state.translations},null,2));
+</script>
+</body>
+</html>
