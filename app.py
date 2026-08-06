@@ -5,6 +5,7 @@ import os
 import re
 import tempfile
 import threading
+import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -350,17 +351,54 @@ def transcribe_youtube():
         return json_error(f"YouTube transcription failed: {message}", 502)
 
 
+def normalise_translation_text(text: str) -> str:
+    """Clean subtitle artefacts before sending text to the translator."""
+    cleaned = " ".join(str(text or "").replace("-->", " ").split())
+    return cleaned[:4500].strip()
+
+
 @lru_cache(maxsize=4096)
 def translate_cached(text: str, target: str) -> str:
+    """Translate one segment with retries; only successful results are cached."""
     if GoogleTranslator is None:
         raise RuntimeError(
             "Translation support is not installed. Run: python -m pip install deep-translator"
         )
-    clean_text = text.strip()
+
+    clean_text = normalise_translation_text(text)
     if not clean_text:
         return ""
-    result = GoogleTranslator(source="en", target=target).translate(clean_text)
-    return str(result or "")
+
+    last_error: Exception | None = None
+    retry_delays = (0.0, 0.8, 1.8)
+
+    for attempt, delay in enumerate(retry_delays, start=1):
+        if delay:
+            time.sleep(delay)
+
+        try:
+            result = GoogleTranslator(
+                source="en",
+                target=target,
+            ).translate(clean_text)
+
+            translated = str(result or "").strip()
+            if translated:
+                return translated
+
+            raise RuntimeError("The translation service returned an empty result.")
+
+        except Exception as exc:
+            last_error = exc
+            logger.warning(
+                "Translation attempt %s/%s failed for %r: %s",
+                attempt,
+                len(retry_delays),
+                clean_text[:120],
+                exc,
+            )
+
+    raise RuntimeError(str(last_error or "Translation service unavailable."))
 
 
 @app.post("/api/translate")
@@ -371,25 +409,52 @@ def translate():
 
     if not isinstance(texts, list) or not texts:
         return json_error("No text was supplied for translation.", 400)
+
     if len(texts) > TRANSLATION_BATCH_LIMIT:
         return json_error(
-            f"Send no more than {TRANSLATION_BATCH_LIMIT} segments in one batch.", 400
+            f"Send no more than {TRANSLATION_BATCH_LIMIT} segments in one batch.",
+            400,
         )
+
     if GoogleTranslator is None:
         return json_error(
-            "Translation support is not installed. Run: python -m pip install deep-translator",
+            "Translation support is not installed. "
+            "Run: python -m pip install deep-translator",
             503,
         )
 
-    cleaned = [str(item or "").strip() for item in texts]
-    try:
-        translations = [
-            translate_cached(text, target) if text else "" for text in cleaned
-        ]
-        return jsonify(translations=translations, target=target)
-    except Exception as exc:
-        logger.exception("Translation failed.")
-        return json_error(f"Translation failed: {exc}", 502)
+    cleaned = [normalise_translation_text(item) for item in texts]
+    translations: list[str] = []
+    failed_indices: list[int] = []
+
+    for index, text in enumerate(cleaned):
+        if not text:
+            translations.append("")
+            continue
+
+        try:
+            translations.append(translate_cached(text, target))
+        except Exception as exc:
+            # A single difficult line must not stop the rest of the video.
+            logger.warning(
+                "Skipping untranslated segment index=%s text=%r error=%s",
+                index,
+                text[:160],
+                exc,
+            )
+            translations.append("")
+            failed_indices.append(index)
+
+        # A small pause reduces rate-limit errors during long videos.
+        time.sleep(0.12)
+
+    return jsonify(
+        translations=translations,
+        target=target,
+        failed_indices=failed_indices,
+        partial=bool(failed_indices),
+        translated_count=len(translations) - len(failed_indices),
+    )
 
 
 @app.errorhandler(404)
